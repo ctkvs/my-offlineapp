@@ -2,9 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ระบบคำนวณแผ่นหลังคาสไลด์ V9 (Full-View)</title>
-  
   <script src="https://cdn.tailwindcss.com"></script>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -156,7 +154,7 @@
         ระบบคำนวณแผ่นสไลด์เมทัลชีท <span class="text-xs bg-[#DC5F00] px-2 py-1 rounded font-mono font-normal">พัฒนาโดย CTKVS</span>
       </h1>
       <p class="text-[#EEEEEE]/80 text-sm mt-1.5 flex items-center gap-1.5">
-        <span class="inline-block w-2 h-2 rounded-full bg-[#DC5F00] animate-pulse"></span>
+        <span class="inline-block w-2 height-2 w-2 h-2 rounded-full bg-[#DC5F00] animate-pulse"></span>
         • เลือกโหมดแสดงผลและพล็อตภาพ Export ตามจริง
       </p>
     </div>
@@ -266,8 +264,7 @@
             <table class="w-full text-left text-sm text-[#373A40]">
               <thead class="bg-[#373A40] text-[#EEEEEE] font-bold">
                 <tr><th class="p-2 text-center w-16 rounded-l">แผ่นที่</th><th class="p-2">ตำแหน่งจุดเริ่มต้น (ม.)</th><th class="p-2 text-right pr-4 rounded-r">ความยาวรวมเผื่อ (ม.)</th></tr>
-              </thead>
-            </table>
+              </table>
             <div class="max-h-[300px] overflow-y-auto">
               <table class="w-full text-left text-sm text-[#373A40]">
                 <tbody id="tableDownBody" class="divide-y divide-[#686D76]/10 font-mono text-sm"></tbody>
@@ -296,8 +293,7 @@
             <table class="w-full text-left text-sm text-[#373A40]">
               <thead class="bg-[#373A40] text-[#EEEEEE] font-bold">
                 <tr><th class="p-2 text-center w-16 rounded-l">แผ่นที่</th><th class="p-2">ตำแหน่งจุดเริ่มต้น (ม.)</th><th class="p-2 text-right pr-4 rounded-r">ความยาวรวมเผื่อ (ม.)</th></tr>
-              </thead>
-            </table>
+              </table>
             <div class="max-h-[300px] overflow-y-auto">
               <table class="w-full text-left text-sm text-[#373A40]">
                 <tbody id="tableUpBody" class="divide-y divide-[#686D76]/10 font-mono text-sm"></tbody>
@@ -492,7 +488,7 @@
         banner.innerHTML = `🎉 ระยะความกว้างพื้นที่พอดีกับหน้าลอนหลังคาพอดีเป๊ะ ทั้งหมด ${baseSheets} แผ่นพอดีเต็มพื้นที่`;
       } else if (isFormulaRoundUp) {
         banner.className = 'p-3 rounded-xl text-sm font-bold text-center border font-mono bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm';
-        banner.innerHTML = `💡 เงื่อนไขสูตร: เศษเหลือ (${remainder.toFixed(2)} ม.) ≥ ขั้นต่ำปัดขึ้น (${minRoundUp.toFixed(2)} ม.) ➡️ สูตรหลักเลือก "แบบที่เกิน (${sheetsUp} แผ่น)" ${modeText}`;
+        banner.innerHTML = `💡 เงื่อนiezสูตร: เศษเหลือ (${remainder.toFixed(2)} ม.) ≥ ขั้นต่ำปัดขึ้น (${minRoundUp.toFixed(2)} ม.) ➡️ สูตรหลักเลือก "แบบที่เกิน (${sheetsUp} แผ่น)" ${modeText}`;
       } else {
         banner.className = 'p-3 rounded-xl text-sm font-bold text-center border font-mono bg-amber-50 border-amber-300 text-amber-800 shadow-sm';
         banner.innerHTML = `💡 เงื่อนไขสูตร: เศษเหลือ (${remainder.toFixed(2)} ม.) < ขั้นต่ำปัดขึ้น (${minRoundUp.toFixed(2)} ม.) ➡️ สูตรหลักเลือก "แบบที่ขาด (${sheetsDown} แผ่น)" ${modeText}`;
@@ -783,7 +779,7 @@
         gx(data.width),
         gy(maxRangeY) - (isExport ? 30 : 5)
       );
-}
+    }
   </script>
 </body>
 </html>
