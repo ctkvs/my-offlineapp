@@ -612,11 +612,8 @@
       // 2. ปรับโครงสร้าง Object Font ให้มี Key เท่ากันทั้งสองโหมดเพื่อป้องกันปัญหาภายหลัง
       const F = isExport ? {
         base    : exportFont,
-        title   : `bold 85px ${exportFont}`
-      } : {
-        base    : exportFont,
-        title   : `bold 20px ${exportFont}`
-              sub     : `42px ${exportFont}`,
+        title   : `bold 85px ${exportFont}`,
+        sub     : `42px ${exportFont}`,
         summary : `bold 42px ${exportFont}`,
         summaryV: `36px ${exportFont}`,
         caseStr : `bold 38px ${exportFont}`,
