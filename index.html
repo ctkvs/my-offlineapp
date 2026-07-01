@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบคำนวณแผ่นหลังคาสไลด์ V9 (Full-View)</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght=300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body { 
+      font-family: 'Sarabun', sans-serif; 
+      background-color: #EEEEEE; /* สีหลักที่ 4 */
+    }
+    
+    .custom-card-transition {
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* ตกแต่ง Input Focus ให้หรูหราด้วยสีส้มไฮไลท์ */
+    input:focus, select:focus {
+      border-color: #DC5F00 !important; /* สีหลักที่ 1 */
+      box-shadow: 0 0 0 4px rgba(220, 95, 0, 0.2) !important;
+      background-color: #ffffff !important;
+    }
+
+    /* พื้นที่สไลด์และเมาส์ลากบน Canvas */
+    .canvas-container {
+      position: relative;
+      overflow: hidden;
+      cursor: grab;
+      background-color: #1E2022 !important;
+      border-color: #373A40 !important; /* สีหลักที่ 2 */
+    }
+    .canvas-container:active {
+      cursor: grabbing;
+    }
+
+    /* ตกแต่ง Custom Slider ให้เรียบหรูสไตล์เครื่องจักรกล */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #686D76; /* สีหลักที่ 3 */
+      height: 6px;
+      border-radius: 999px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #DC5F00; /* สีหลักที่ 1 */
+      cursor: pointer;
+      border: 2px solid #EEEEEE; /* สีหลักที่ 4 */
+      transition: transform 0.15s, background-color 0.15s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+      background: #FF7A1A;
+    }
+
+    /* Custom Scrollbar ให้เข้ากับธีมเข้ม */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #EEEEEE; /* สีหลักที่ 4 */
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #686D76; /* สีหลักที่ 3 */
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #373A40; /* สีหลักที่ 2 */
+    }
+
+    /* ========================================================= */
+    /* FORCE OVERRIDES: บังคับเปลี่ยนสีคลาสจาก JS ให้แมตช์ธีมใหม่ */
+    /* ========================================================= */
+    
+    /* ควบคุมแบนเนอร์สรุปสูตร */
+    #formulaStatusBanner.bg-blue-50, 
+    #formulaStatusBanner.bg-emerald-50, 
+    #formulaStatusBanner.bg-amber-50 {
+      background-color: #373A40 !important; /* สีหลักที่ 2 */
+      border-width: 2px !important;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+    }
+    #formulaStatusBanner.text-blue-800,
+    #formulaStatusBanner.text-emerald-800,
+    #formulaStatusBanner.text-amber-800 {
+      color: #EEEEEE !important; /* สีหลักที่ 4 */
+    }
+    #formulaStatusBanner.border-blue-300 { border-color: #686D76 !important; }
+    #formulaStatusBanner.border-emerald-300 { border-color: #DC5F00 !important; }
+    #formulaStatusBanner.border-amber-300 { border-color: #FF842B !important; }
+
+    /* ควบคุมการ์ดผลลัพธ์เมื่อเปิดใช้งาน (Active State) */
+    .border-blue-500, .border-emerald-500, .border-amber-500 {
+      border-color: #DC5F00 !important; /* สีหลักที่ 1 */
+      border-width: 3px !important;
+      transform: scale(1.02) translateY(-4px) !important;
+      box-shadow: 0 25px 50px -12px rgba(220, 95, 0, 0.25) !important;
+      background-color: #ffffff !important;
+    }
+    
+    /* เอฟเฟกต์แสงวงแหวนรอบการ์ดที่ถูกเลือก */
+    .ring-emerald-100, .ring-amber-100 {
+      --tw-ring-opacity: 0.5 !important;
+      --tw-ring-color: rgba(220, 95, 0, 0.2) !important;
+    }
+    
+    /* จัดการการ์ดที่ไม่ได้เลือก (Inactive State) ให้ดูจางลงแบบคูลๆ */
+    .opacity-40 {
+      opacity: 0.4 !important;
+      filter: grayscale(30%);
+      border-color: #686D76 !important; /* สีหลักที่ 3 */
+      border-width: 1px !important;
+      transform: scale(0.99) !important;
+    }
+    .opacity-40:hover {
+      opacity: 0.85 !important;
+      filter: grayscale(0%);
+      transform: scale(1.00) !important;
+    }
+
+    /* บังคับสีป้ายลายน้ำโลโก้ (Badge) ให้เป็นธีมส้มเท่ๆ */
+    #badgeUp, #badgeDown {
+      background-color: #DC5F00 !important; /* สีหลักที่ 1 */
+      color: #EEEEEE !important; /* สีหลักที่ 4 */
+      font-weight: 700 !important;
+      letter-spacing: 0.05em;
+      box-shadow: 0 2px 8px rgba(220, 95, 0, 0.3) !important;
+    }
+    
+    /* ตัวเลขแสดงระยะขาด/เกินในตารางแบบเด่นชัด */
+    .text-emerald-600, .text-red-600 {
+      color: #DC5F00 !important; /* สีหลักที่ 1 */
+    }
+  </style>
+</head>
+<body class="min-h-screen py-8 px-4">
+
+  <div class="max-w-7xl mx-auto bg-white rounded-2xl shadow-[0_20px_50px_rgba(55,58,64,0.15)] overflow-hidden border border-[#686D76]/20">
+    
+    <div class="bg-gradient-to-r from-[#373A40] via-[#4A4E54] to-[#373A40] p-6 text-white border-b-4 border-[#DC5F00]">
+      <h1 class="text-2xl font-bold tracking-wide flex items-center gap-3">
+        <span class="bg-[#DC5F00] p-1.5 rounded-lg text-white shadow-md">📐</span> 
+        ระบบคำนวณแผ่นสไลด์เมทัลชีท <span class="text-xs bg-[#DC5F00] px-2 py-1 rounded font-mono font-normal">พัฒนาโดย CTKVS</span>
+      </h1>
+      <p class="text-[#EEEEEE]/80 text-sm mt-1.5 flex items-center gap-1.5">
+        <span class="inline-block w-2 h-2 rounded-full bg-[#DC5F00] animate-pulse"></span>
+        • เลือกโหมดแสดงผลและพล็อตภาพ Export ตามจริง
+      </p>
+    </div>
+
+    <div class="p-6 space-y-6">
+      
+      <div class="bg-white p-5 rounded-xl border border-[#686D76]/30 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+        <h2 class="text-xs font-bold text-[#373A40] mb-4 uppercase tracking-wider flex items-center gap-2">
+          <span class="w-2 h-3 bg-[#DC5F00] inline-block rounded-sm"></span>📥 ช่องระบุระยะและเงื่อนไขคำนวณ
+        </h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-[#686D76] mb-1">1. สูงสุด (ม.)</label>
+            <input type="number" id="maxHeight" step="0.01" value="" class="w-full p-2 bg-[#EEEEEE]/30 border border-[#686D76]/50 rounded-lg font-mono text-sm focus:outline-none transition-all">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-[#686D76] mb-1">2. กว้างพื้นที่ (ม.)</label>
+            <input type="number" id="width" step="0.01" value="" class="w-full p-2 bg-[#EEEEEE]/30 border border-[#686D76]/50 rounded-lg font-mono text-sm focus:outline-none transition-all">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-[#686D76] mb-1">3. ต่ำสุด (ม.)</label>
+            <input type="number" id="minHeight" step="0.01" value="" class="w-full p-2 bg-[#EEEEEE]/30 border border-[#686D76]/50 rounded-lg font-mono text-sm focus:outline-none transition-all">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-[#686D76] mb-1">4. เผื่อ หัว+ท้าย (ม.)</label>
+            <input type="number" id="allowance" step="0.01" value="0.10" class="w-full p-2 bg-[#EEEEEE]/30 border border-[#686D76]/50 rounded-lg font-mono text-sm focus:outline-none transition-all">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-[#686D76] mb-1">5. เลือกลอนหลังคา</label>
+            <select id="profileWidth" class="w-full p-2 bg-[#EEEEEE]/30 border border-[#686D76]/50 rounded-lg text-sm font-semibold text-[#373A40] focus:outline-none transition-all">
+              <option value="0.76" selected>ลอนปกติ (0.76 ม.)</option>
+              <option value="0.30">สแนปล็อค (0.30 ม.)</option>
+              <option value="0.70">คลิปล็อค (0.70 ม.)</option>
+              <option value="0.72">ซากุระ (0.72 ม.)</option>
+              <option value="0.86">ลอนฝ้า (0.86 ม.)</option>
+              <option value="0.26">พาแนล (0.26 ม.)</option>
+              <option value="0.85">ISO WALL (0.85 ม.)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-[#686D76] mb-1">6. ขั้นต่ำปัดขึ้น (ม.)</label>
+            <input type="number" id="minRoundUp" step="0.01" value="0.30" class="w-full p-2 bg-[#EEEEEE]/30 border border-[#686D76]/50 rounded-lg font-mono text-sm focus:outline-none transition-all">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-[#DC5F00] mb-1">7. โหมดเลือกแบบแผ่น</label>
+            <select id="displayMode" onchange="calculateV9()" class="w-full p-2 bg-[#EEEEEE] border border-[#686D76] rounded-lg text-sm font-bold text-[#373A40] focus:outline-none transition-all">
+              <option value="auto" selected>อัตโนมัติ</option>
+              <option value="down">บังคับแบบที่ขาด (ปัดลง)</option>
+              <option value="up">บังคับแบบที่เกิน (ปัดขึ้น)</option>
+            </select>
+          </div>
+          <div class="flex items-end col-span-2 sm:col-span-1">
+            <button id="btnCalculate" onclick="calculateV9()" class="w-full bg-[#DC5F00] hover:bg-[#B54E00] text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 shadow-[0_4px_14px_rgba(220,95,0,0.4)] hover:shadow-[0_6px_20px_rgba(220,95,0,0.6)] text-sm transform hover:-translate-y-0.5">
+              คำนวณ
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="formulaStatusBanner" class="p-3 rounded-xl text-sm font-bold text-center border font-mono">
+        - กำลังคำนวณหาระยะเศษเหลือ -
+      </div>
+
+      <div class="bg-[#373A40] p-4 rounded-xl shadow-inner border border-[#686D76]/50">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-3 gap-3">
+          <h3 class="text-xs font-bold text-[#EEEEEE] tracking-wider uppercase flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-[#DC5F00]"></span>📊 INTERACTIVE DRAWING BOARD (FULL-VIEW)
+          </h3>
+          <div class="flex flex-wrap items-center gap-4 bg-[#2A2C31] p-2 rounded-lg border border-[#686D76]/40 w-full sm:w-auto justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-[#EEEEEE]/70 text-xs font-semibold">🔍 ระดับซูม:</span>
+              <input type="range" id="zoomSlider" min="0.4" max="4.0" step="0.02" value="1.0" oninput="handleZoomSlider(this.value)" class="w-32 cursor-pointer">
+              <span id="zoomText" class="text-[#DC5F00] text-xs font-mono w-10 font-bold">100%</span>
+              <button onclick="resetZoomAndPan()" class="text-[#EEEEEE] hover:text-[#DC5F00] text-xs bg-[#686D76]/50 px-2 py-0.5 rounded transition">รีเซ็ตทัศนวิสัย</button>
+            </div>
+            <button onclick="exportToHDBlueprintA4()" class="bg-[#DC5F00] hover:bg-[#B54E00] text-white text-xs font-bold py-1.5 px-4 rounded transition-all flex items-center gap-1 shadow-md">
+              🖨️ ส่งออกแปลนภาพพิมพ์
+            </button>
+          </div>
+        </div>
+        
+        <div id="canvasViewport" class="canvas-container overflow-hidden bg-slate-950 rounded-lg border border-slate-800 h-[420px] flex items-center justify-center relative touch-none">
+          <canvas id="roofCanvas" class="origin-center transition-transform duration-75"></canvas>
+        </div>
+        <p class="text-[#EEEEEE]/60 text-[11px] mt-1.5 text-center">💡 สามารถใช้เมาส์คลิกลากเพื่อย้ายเฟรม หรือหมุนล้อเมาส์เพื่อซูม สำหรับ iPad สามารถใช้สองนิ้วกางถ่างซูมเข้าออกได้อย่างอิสระ</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <div id="cardDown" onclick="selectCardMode('down')" class="bg-white rounded-xl border-2 border-[#686D76]/20 shadow-md overflow-hidden flex flex-col custom-card-transition cursor-pointer hover:shadow-lg">
+          <div class="bg-[#373A40] p-4 text-white flex justify-between items-center border-b-2 border-[#686D76]">
+            <div>
+              <span class="text-xs font-bold uppercase tracking-widest text-[#DC5F00] block">CASE A</span>
+              <h3 class="text-lg font-bold text-[#EEEEEE]">แบบที่ขาด (ปัดแผ่นลง)</h3>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="btnCopyDown" onclick="copyToExcel('down', event)" class="bg-[#686D76] hover:bg-[#DC5F00] text-white text-xs font-semibold py-1.5 px-3 rounded-lg transition shadow-md">📋 คัดลอกลง Excel</button>
+              <span id="badgeDown" class="hidden bg-amber-400 text-slate-950 text-xs font-extrabold px-3 py-1 rounded-full shadow">พัฒนาโดย CTKVS</span>
+            </div>
+          </div>
+          <div class="p-4 bg-[#EEEEEE]/40 grid grid-cols-3 gap-2 text-center font-semibold text-slate-700 border-b border-[#686D76]/20">
+            <div class="bg-white p-2 rounded border border-[#686D76]/20"><span class="text-xs text-[#686D76] block">จำนวนแผ่น</span><div id="sheetsDownCount" class="text-xl font-black text-[#373A40] mt-0.5">-</div></div>
+            <div class="bg-white p-2 rounded border border-[#686D76]/20"><span class="text-xs text-[#686D76] block">ระยะความกว้าง</span><div id="shortageWidthText" class="text-sm font-bold text-red-600 mt-1">-</div></div>
+            <div class="bg-white p-2 rounded border border-[#686D76]/20"><span class="text-xs text-[#686D76] block">รวมเมตรสะสม</span><div id="totalMetersDown" class="text-xl font-black text-[#DC5F00] mt-0.5">-</div></div>
+          </div>
+          <div class="p-2 flex-1 overflow-x-auto">
+            <table class="w-full text-left text-sm text-[#373A40]">
+              <thead class="bg-[#373A40] text-[#EEEEEE] font-bold">
+                <tr><th class="p-2 text-center w-16 rounded-l">แผ่นที่</th><th class="p-2">ตำแหน่งจุดเริ่มต้น (ม.)</th><th class="p-2 text-right pr-4 rounded-r">ความยาวรวมเผื่อ (ม.)</th></tr>
+              </thead>
+            </table>
+            <div class="max-h-[300px] overflow-y-auto">
+              <table class="w-full text-left text-sm text-[#373A40]">
+                <tbody id="tableDownBody" class="divide-y divide-[#686D76]/10 font-mono text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="cardUp" onclick="selectCardMode('up')" class="bg-white rounded-xl border-2 border-[#686D76]/20 shadow-md overflow-hidden flex flex-col custom-card-transition cursor-pointer hover:shadow-lg">
+          <div class="bg-[#373A40] p-4 text-white flex justify-between items-center border-b-2 border-[#686D76]">
+            <div>
+              <span class="text-xs font-bold uppercase tracking-widest text-[#DC5F00] block">CASE B</span>
+              <h3 class="text-lg font-bold text-[#EEEEEE]">แบบที่เกิน (ปัดแผ่นขึ้น)</h3>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="btnCopyUp" onclick="copyToExcel('up', event)" class="bg-[#686D76] hover:bg-[#DC5F00] text-white text-xs font-semibold py-1.5 px-3 rounded-lg transition shadow-md">📋 คัดลอกลง Excel</button>
+              <span id="badgeUp" class="hidden bg-emerald-400 text-slate-950 text-xs font-extrabold px-3 py-1 rounded-full shadow">พัฒนาโดย CTKVS</span>
+            </div>
+          </div>
+          <div class="p-4 bg-[#EEEEEE]/40 grid grid-cols-3 gap-2 text-center font-semibold text-slate-700 border-b border-[#686D76]/20">
+            <div class="bg-white p-2 rounded border border-[#686D76]/20"><span class="text-xs text-[#686D76] block">จำนวนแผ่น</span><div id="sheetsUpCount" class="text-xl font-black text-[#373A40] mt-0.5">-</div></div>
+            <div class="bg-white p-2 rounded border border-[#686D76]/20"><span class="text-xs text-[#686D76] block">ระยะความกว้าง</span><div id="overageWidthText" class="text-sm font-bold text-emerald-600 mt-1">-</div></div>
+            <div class="bg-white p-2 rounded border border-[#686D76]/20"><span class="text-xs text-[#686D76] block">รวมเมตรสะสม</span><div id="totalMetersUp" class="text-xl font-black text-[#DC5F00] mt-0.5">-</div></div>
+          </div>
+          <div class="p-2 flex-1 overflow-x-auto">
+            <table class="w-full text-left text-sm text-[#373A40]">
+              <thead class="bg-[#373A40] text-[#EEEEEE] font-bold">
+                <tr><th class="p-2 text-center w-16 rounded-l">แผ่นที่</th><th class="p-2">ตำแหน่งจุดเริ่มต้น (ม.)</th><th class="p-2 text-right pr-4 rounded-r">ความยาวรวมเผื่อ (ม.)</th></tr>
+              </thead>
+            </table>
+            <div class="max-h-[300px] overflow-y-auto">
+              <table class="w-full text-left text-sm text-[#373A40]">
+                <tbody id="tableUpBody" class="divide-y divide-[#686D76]/10 font-mono text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let currentZoom = 1.0;
+    let panX = 0, panY = 0;
+    let isPanning = false;
+    let startPanX = 0, startPanY = 0;
+    let initialTouchDist = null, initialZoom = 1.0;
+    let currentCalculationCache = null;
+
+    const EXPORT_FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+
+    window.onload = function() {
+      calculateV9();
+      setupEnterNavigation();
+      initAdvancedInteractionEngine();
+    };
+
+    function selectCardMode(mode) {
+      if (currentCalculationCache && currentCalculationCache.isPerfectFit) return; 
+      document.getElementById('displayMode').value = mode;
+      calculateV9();
+    }
+
+    function copyToExcel(mode, event) {
+      if (event) event.stopPropagation(); 
+      if (!currentCalculationCache) return;
+
+      const list = mode === 'up' ? currentCalculationCache.sheetsUpList : currentCalculationCache.sheetsDownList;
+      if (!list || list.length === 0) return;
+
+      const textToCopy = list.map(sheet => sheet.length.toFixed(2)).join('\n');
+
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        const btnId = mode === 'up' ? 'btnCopyUp' : 'btnCopyDown';
+        const btn = document.getElementById(btnId);
+        if (btn) {
+          const originalText = btn.innerHTML;
+          btn.innerHTML = '✅ คัดลอกเรียบร้อย!';
+          btn.classList.remove('bg-slate-600', 'hover:bg-slate-500');
+          btn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+
+          setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+            btn.classList.add('bg-slate-600', 'hover:bg-slate-500');
+          }, 2000);
+        }
+      }).catch(err => {
+        console.error('ไม่สามารถคัดลอกได้อัตโนมัติ: ', err);
+      });
+    }
+
+    function setupEnterNavigation() {
+      const inputOrder = ['maxHeight','width','minHeight','allowance','profileWidth','minRoundUp'];
+      inputOrder.forEach((id, index) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (index < inputOrder.length - 1) {
+              const next = document.getElementById(inputOrder[index + 1]);
+              if (next) { next.focus(); if (next.tagName === 'INPUT') next.select(); }
+            } else {
+              calculateV9();
+              document.getElementById('btnCalculate').focus();
+            }
+          }
+        });
+      });
+    }
+
+    function initAdvancedInteractionEngine() {
+      const viewport = document.getElementById('canvasViewport');
+      viewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomStep = 1.08;
+        currentZoom = e.deltaY < 0 ? Math.min(4.0, currentZoom * zoomStep) : Math.max(0.4, currentZoom / zoomStep);
+        updateZoomUI();
+      }, { passive: false });
+      viewport.addEventListener('mousedown', (e) => {
+        isPanning = true;
+        startPanX = e.clientX - panX;
+        startPanY = e.clientY - panY;
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        panX = e.clientX - startPanX;
+        panY = e.clientY - startPanY;
+        applyTransformation();
+      });
+      window.addEventListener('mouseup', () => { isPanning = false; });
+      viewport.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          isPanning = false;
+          initialTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+          initialZoom = currentZoom;
+        } else if (e.touches.length === 1) {
+          isPanning = true;
+          startPanX = e.touches[0].clientX - panX;
+          startPanY = e.touches[0].clientY - panY;
+        }
+      }, { passive: true });
+      viewport.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && initialTouchDist) {
+          e.preventDefault();
+          const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+          currentZoom = Math.min(4.0, Math.max(0.4, initialZoom * (d / initialTouchDist)));
+          updateZoomUI();
+        } else if (e.touches.length === 1 && isPanning) {
+          panX = e.touches[0].clientX - startPanX;
+          panY = e.touches[0].clientY - startPanY;
+          applyTransformation();
+        }
+      }, { passive: false });
+      viewport.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) initialTouchDist = null;
+        if (e.touches.length === 0) isPanning = false;
+      });
+    }
+
+    function handleZoomSlider(val) {
+      currentZoom = parseFloat(val);
+      document.getElementById('zoomText').innerText = `${Math.round(currentZoom * 100)}%`;
+      applyTransformation();
+    }
+
+    function updateZoomUI() {
+      document.getElementById('zoomSlider').value = currentZoom.toFixed(2);
+      document.getElementById('zoomText').innerText = `${Math.round(currentZoom * 100)}%`;
+      applyTransformation();
+    }
+
+    function resetZoomAndPan() {
+      currentZoom = 1.0; panX = 0; panY = 0;
+      updateZoomUI();
+    }
+
+    function applyTransformation() {
+      document.getElementById('roofCanvas').style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
+    }
+
+    function calculateV9() {
+      const maxHeight  = parseFloat(document.getElementById('maxHeight').value)  || 0;
+      const width      = parseFloat(document.getElementById('width').value)       || 0;
+      const minHeight  = parseFloat(document.getElementById('minHeight').value)   || 0;
+      const allowance  = parseFloat(document.getElementById('allowance').value)   || 0;
+      const pWidth     = parseFloat(document.getElementById('profileWidth').value)|| 0;
+      const minRoundUp = parseFloat(document.getElementById('minRoundUp').value)  || 0;
+      const displayMode = document.getElementById('displayMode').value;
+
+      if (width <= 0 || pWidth <= 0) return;
+
+      const baseSheets = Math.floor(width / pWidth);
+      const remainder = parseFloat((width - (baseSheets * pWidth)).toFixed(4));
+      
+      const isFormulaRoundUp = (remainder >= minRoundUp);
+      const isPerfectFit = (remainder === 0);
+
+      const sheetsDown = baseSheets === 0 ? 1 : baseSheets;
+      const sheetsUp = baseSheets + 1;
+      
+      const shortageWidth = Math.max(0, width - (sheetsDown * pWidth));
+      const overageWidth = (sheetsUp * pWidth) - width;
+
+      let finalActiveCase = 'auto'; 
+      if (displayMode === 'auto') {
+        finalActiveCase = isPerfectFit ? 'fit' : (isFormulaRoundUp ? 'up' : 'down');
+      } else {
+        finalActiveCase = isPerfectFit ? 'fit' : displayMode; 
+      }
+
+      const banner = document.getElementById('formulaStatusBanner');
+      let modeText = "";
+      if (displayMode === 'down') modeText = " [คุณเลือกบังคับแบบที่ขาด]";
+      else if (displayMode === 'up') modeText = " [คุณเลือกบังคับแบบที่เกิน]";
+
+      if (isPerfectFit) {
+        banner.className = 'p-3 rounded-xl text-sm font-bold text-center border font-mono bg-blue-50 border-blue-300 text-blue-800 shadow-sm';
+        banner.innerHTML = `🎉 ระยะความกว้างพื้นที่พอดีกับหน้าลอนหลังคาพอดีเป๊ะ ทั้งหมด ${baseSheets} แผ่นพอดีเต็มพื้นที่`;
+      } else if (isFormulaRoundUp) {
+        banner.className = 'p-3 rounded-xl text-sm font-bold text-center border font-mono bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm';
+        banner.innerHTML = `💡 เงื่อนไขสูตร: เศษเหลือ (${remainder.toFixed(2)} ม.) ≥ ขั้นต่ำปัดขึ้น (${minRoundUp.toFixed(2)} ม.) ➡️ สูตรหลักเลือก "แบบที่เกิน (${sheetsUp} แผ่น)" ${modeText}`;
+      } else {
+        banner.className = 'p-3 rounded-xl text-sm font-bold text-center border font-mono bg-amber-50 border-amber-300 text-amber-800 shadow-sm';
+        banner.innerHTML = `💡 เงื่อนไขสูตร: เศษเหลือ (${remainder.toFixed(2)} ม.) < ขั้นต่ำปัดขึ้น (${minRoundUp.toFixed(2)} ม.) ➡️ สูตรหลักเลือก "แบบที่ขาด (${sheetsDown} แผ่น)" ${modeText}`;
+      }
+
+      if (isPerfectFit) {
+        document.getElementById('cardUp').className   = 'bg-white rounded-xl border-2 border-blue-500 shadow-xl overflow-hidden flex flex-col scale-[1.01] custom-card-transition cursor-pointer';
+        document.getElementById('cardDown').className = 'bg-white rounded-xl border-2 border-blue-500 shadow-xl overflow-hidden flex flex-col scale-[1.01] custom-card-transition cursor-pointer';
+        document.getElementById('badgeUp').classList.add('hidden');
+        document.getElementById('badgeDown').classList.add('hidden');
+      } else if (finalActiveCase === 'up') {
+        document.getElementById('cardUp').className   = 'bg-white rounded-xl border-2 border-emerald-500 shadow-xl overflow-hidden flex flex-col scale-[1.01] custom-card-transition cursor-pointer ring-4 ring-emerald-100';
+        document.getElementById('cardDown').className = 'bg-white rounded-xl border border-slate-200 shadow-md overflow-hidden flex flex-col opacity-40 custom-card-transition cursor-pointer hover:opacity-70';
+        document.getElementById('badgeUp').classList.remove('hidden');
+        document.getElementById('badgeDown').classList.add('hidden');
+      } else {
+        document.getElementById('cardDown').className = 'bg-white rounded-xl border-2 border-amber-500 shadow-xl overflow-hidden flex flex-col scale-[1.01] custom-card-transition cursor-pointer ring-4 ring-amber-100';
+        document.getElementById('cardUp').className   = 'bg-white rounded-xl border border-slate-200 shadow-md overflow-hidden flex flex-col opacity-40 custom-card-transition cursor-pointer hover:opacity-70';
+        document.getElementById('badgeDown').classList.remove('hidden');
+        document.getElementById('badgeUp').classList.add('hidden');
+      }
+
+      let totalMetersDown = 0, tableDownHtml = '', sheetsDownList = [];
+      const renderSheetsDownCount = isPerfectFit ? baseSheets : sheetsDown;
+      for (let i = 1; i <= renderSheetsDownCount; i++) {
+        let currentX = (i - 1) * pWidth;
+        let currentHeight = maxHeight - (currentX * (maxHeight - minHeight) / width);
+        let finalLength = parseFloat((currentHeight + allowance).toFixed(2));
+        
+        totalMetersDown += finalLength;
+        sheetsDownList.push({ index: i, x: currentX, length: finalLength });
+        
+        tableDownHtml += `<tr class="hover:bg-slate-50"><td class="p-2 text-center font-bold text-slate-500">${i}</td><td class="p-2 text-slate-600">${currentX.toFixed(2)} ม.</td><td class="p-2 text-right pr-4 font-bold text-slate-900">${finalLength.toFixed(2)} ม.</td></tr>`;
+      }
+
+      let totalMetersUp = 0, tableUpHtml = '', sheetsUpList = [];
+      const renderSheetsUpCount = isPerfectFit ? baseSheets : sheetsUp;
+      for (let i = 1; i <= renderSheetsUpCount; i++) {
+        let currentX = (i - 1) * pWidth;
+        let currentHeight = maxHeight - (currentX * (maxHeight - minHeight) / width);
+        let finalLength = parseFloat((currentHeight + allowance).toFixed(2));
+        
+        totalMetersUp += finalLength;
+        sheetsUpList.push({ index: i, x: currentX, length: finalLength });
+        
+        tableUpHtml += `<tr class="hover:bg-slate-50"><td class="p-2 text-center font-bold text-slate-500">${i}</td><td class="p-2 text-slate-600">${currentX.toFixed(2)} ม.</td><td class="p-2 text-right pr-4 font-bold text-slate-900">${finalLength.toFixed(2)} ม.</td></tr>`;
+      }
+
+      document.getElementById('sheetsDownCount').innerText   = `${renderSheetsDownCount} แผ่น`;
+      document.getElementById('shortageWidthText').innerText = isPerfectFit ? 'มุงพอดีเต็มพื้นที่' : `ขาดระยะมุง -${shortageWidth.toFixed(2)} ม.`;
+      document.getElementById('totalMetersDown').innerText   = `${totalMetersDown.toFixed(2)} ม.`;
+      document.getElementById('tableDownBody').innerHTML     = tableDownHtml;
+      
+      document.getElementById('sheetsUpCount').innerText     = `${renderSheetsUpCount} แผ่น`;
+      document.getElementById('overageWidthText').innerText  = isPerfectFit ? 'มุงพอดีเต็มพื้นที่' : `ระยะเกินแผ่น +${overageWidth.toFixed(2)} ม.`;
+      document.getElementById('totalMetersUp').innerText     = `${totalMetersUp.toFixed(2)} ม.`;
+      document.getElementById('tableUpBody').innerHTML       = tableUpHtml;
+
+      currentCalculationCache = {
+        maxHeight, width, minHeight, allowance, pWidth, minRoundUp,
+        sheetsDown: renderSheetsDownCount, sheetsUp: renderSheetsUpCount, isFormulaRoundUp, remainder,
+        sheetsDownList, sheetsUpList, totalMetersDown, totalMetersUp,
+        shortageWidth, overageWidth, isPerfectFit,
+        finalActiveCase
+      };
+
+      renderScreenCanvas(document.getElementById('roofCanvas'), currentCalculationCache);
+    }
+
+    function renderScreenCanvas(canvas, data) {
+      const DPR = 3;
+      const W = 1010, H = 400;
+      canvas.width  = W * DPR;
+      canvas.height = H * DPR;
+      canvas.style.width  = W + 'px';
+      canvas.style.height = H + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.resetTransform();
+      ctx.scale(DPR, DPR);
+      drawBlueprint(ctx, W, H, data, false);
+    }
+
+    function exportToHDBlueprintA4() {
+      if (!currentCalculationCache) return;
+      const btn = document.querySelector('button[onclick="exportToHDBlueprintA4()"]');
+      if (btn) { btn.innerText = '⏳ กำลังสร้างรูปภาพความละเอียดสูง...'; btn.disabled = true; }
+
+      const a4 = document.createElement('canvas');
+      a4.width  = 3508;
+      a4.height = 2480;
+      const ctx = a4.getContext('2d');
+      ctx.resetTransform();
+
+      drawBlueprint(ctx, 3508, 2480, currentCalculationCache, true);
+
+      const dataUrl = a4.toDataURL('image/jpeg', 0.95);
+      const anchor  = document.createElement('a');
+      
+      let modeName = "อัตโนมัติ";
+      if (currentCalculationCache.isPerfectFit) modeName = "พอดีพื้นที่";
+      else if (currentCalculationCache.finalActiveCase === "up") modeName = "แบบที่เกิน";
+      else if (currentCalculationCache.finalActiveCase === "down") modeName = "แบบที่ขาด";
+
+      anchor.download = `พิมพ์เขียวแปลนหลังคาสไลด์_โหมด_${modeName}_กว้าง_${currentCalculationCache.width.toFixed(2)}ม.jpg`;
+      anchor.href = dataUrl;
+      anchor.click();
+
+      if (btn) { btn.innerText = 'ส่งออกแปลนภาพพิมพ์'; btn.disabled = false; }
+    }
+
+    function drawBlueprint(ctx, W, H, data, isExport) {
+      ctx.direction = 'ltr';
+
+      // 1. ป้องกัน Error หากไม่ได้กำหนด EXPORT_FONT ไว้ในระบบพิกัดด้านนอก (Global)
+      const exportFont = typeof EXPORT_FONT !== 'undefined' ? EXPORT_FONT : "'Sarabun', sans-serif";
+
+      // 2. ปรับโครงสร้าง Object Font ให้มี Key เท่ากันทั้งสองโหมดเพื่อป้องกันปัญหาภายหลัง
+      const F = isExport ? {
+        base    : exportFont,
+        title   : `bold 85px ${exportFont}`
+      } : {
+        base    : exportFont,
+        title   : `bold 20px ${exportFont}`
+              sub     : `42px ${exportFont}`,
+        summary : `bold 42px ${exportFont}`,
+        summaryV: `36px ${exportFont}`,
+        caseStr : `bold 38px ${exportFont}`,
+        body    : `bold 36px ${exportFont}`,
+        sheetNum: `bold 46px ${exportFont}`,  
+        heightLbl:`bold 46px ${exportFont}`,  
+        axisLbl : `32px ${exportFont}`,       
+        sheetLbl: `bold 36px ${exportFont}`,  
+        redLbl  : `bold 38px ${exportFont}`
+      } : {
+        base    : `'Sarabun', sans-serif`,
+        title   : `bold 14px 'Sarabun', sans-serif`,
+        sub     : `11px 'Sarabun', sans-serif`,
+        summary : `bold 11px 'Sarabun', sans-serif`, 
+        summaryV: `10px 'Sarabun', sans-serif`,   
+        caseStr : `bold 11px 'Sarabun', sans-serif`,   
+        body    : `11px 'Sarabun', sans-serif`,
+        sheetNum: `bold 11px 'Sarabun', sans-serif`,
+        heightLbl:`bold 11px 'Sarabun', sans-serif`,
+        axisLbl : `9px 'Sarabun', sans-serif`,
+        sheetLbl: `10px 'Sarabun', sans-serif`,
+        redLbl  : `10px 'Sarabun', sans-serif`
+      };
+
+      const PAD_L   = isExport ? 450  : 140;  
+      const PAD_R   = isExport ? 450  : 140;  
+      const PAD_TOP = isExport ? 550  : 50;
+      const PAD_BOT = isExport ? 300  : 60;
+
+      const DRAW_W = W - PAD_L - PAD_R;
+      const DRAW_H = H - PAD_TOP - PAD_BOT;
+
+      const activeList = data.isPerfectFit ? data.sheetsDownList : (data.finalActiveCase === 'up' ? data.sheetsUpList : data.sheetsDownList);
+      
+      const totalWidthOfSheets = activeList.length * data.pWidth;
+      const maxRangeX = Math.max(data.width, totalWidthOfSheets);
+      const maxRangeY = Math.max(data.maxHeight, data.minHeight) * 1.15;
+
+      function gx(val) { return PAD_L + (val / maxRangeX) * DRAW_W; }
+      function gy(val) { return H - PAD_BOT - (val / maxRangeY) * DRAW_H; }
+      function heightAt(x) {
+        return data.maxHeight - (x * (data.maxHeight - data.minHeight) / data.width);
+      }
+
+      ctx.fillStyle = isExport ? '#ffffff' : '#020617';
+      ctx.fillRect(0, 0, W, H);
+
+      if (isExport) {
+        ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 10;
+        ctx.strokeRect(30, 30, W - 60, H - 60);
+
+        ctx.fillStyle = '#0f172a';
+        ctx.font = F.title; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText('ใบแจ้งแบบมุง แผ่นหลังคาสไลด์', 100, 80);
+
+        ctx.font = F.sub; ctx.fillStyle = '#475569';
+        ctx.fillText(`วันที่พิมพ์แบบ: ${new Date().toLocaleString('th-TH')} น.`, 100, 190);
+      }
+
+      let sheetColor = 'rgba(251,191,36,0.12)';
+      if (data.isPerfectFit) {
+        sheetColor = isExport ? 'rgba(37,99,235,0.06)' : 'rgba(59,130,246,0.15)';
+      } else if (data.finalActiveCase === 'up') {
+        sheetColor = isExport ? 'rgba(16,185,129,0.06)' : 'rgba(52,211,153,0.12)';
+      } else {
+        sheetColor = isExport ? 'rgba(245,158,11,0.06)' : 'rgba(251,191,36,0.12)';
+      }
+      
+      const strokeColor = isExport ? '#0284c7' : 'rgba(56,189,248,0.6)';
+
+      activeList.forEach(sheet => {
+        const h = heightAt(sheet.x);
+        const x1 = gx(sheet.x);
+        const y1 = gy(h);
+        const bw = (data.pWidth / maxRangeX) * DRAW_W;
+        const bh = (h / maxRangeY) * DRAW_H;
+        const groundY = gy(0);
+
+        ctx.fillStyle = sheetColor;
+        ctx.fillRect(x1, y1, bw, bh);
+
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = isExport ? 5 : 1.5;
+        ctx.strokeRect(x1, y1, bw, bh);
+
+        ctx.beginPath();
+        ctx.setLineDash(isExport ? [15, 10] : [4, 4]);
+        ctx.moveTo(x1 + bw, groundY);
+        ctx.lineTo(x1 + bw, gy(Math.max(0, heightAt(sheet.x + data.pWidth))));
+        ctx.strokeStyle = isExport ? '#cbd5e1' : 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = isExport ? 2 : 1;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // --- ส่วนที่ 1: แสดงเฉพาะตอนอยู่บนเว็บหลักเท่านั้น (โหมดพิมพ์ไม่แสดง) ---
+        if (!isExport) {
+          // ตัวเลขระยะแนวแกน X ด้านล่างแผ่น
+          ctx.fillStyle = '#94a3b8';
+          ctx.font      = F.axisLbl;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          const axisY = groundY + 14;
+          ctx.fillText(`${(sheet.x + data.pWidth).toFixed(2)} ม.`, x1 + bw, axisY);
+
+          // ข้อความระบุลำดับแผ่น (แผ่น 1, แผ่น 2, ...)
+          ctx.font      = F.sheetLbl;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+          const labelAboveY = groundY - 7;
+          ctx.fillText(`แผ่น ${sheet.index}`, x1 + bw/2, labelAboveY);
+        }
+
+        // --- ส่วนที่ 2: ขนาดความยาวแผ่นตรงกลาง (แสดงทั้งบนเว็บ และในภาพ Export) ---
+        ctx.save();
+        // สลับสีตัวอักษร: บนเว็บใช้สีขาว (#ffffff) / ภาพ Export ใช้สีเข้ม (#0f172a) เพื่อให้มองเห็นชัดเจน
+        ctx.fillStyle = isExport ? '#0f172a' : '#ffffff';
+        ctx.font      = F.sheetNum;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.translate(x1 + bw / 2, y1 + bh / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(`${sheet.length.toFixed(2)} ม.`, 0, 0);
+        ctx.restore();
+      });
+
+      ctx.beginPath();
+      ctx.moveTo(PAD_L - 80, gy(0));
+      ctx.lineTo(gx(maxRangeX) + 80, gy(0));
+      ctx.strokeStyle = isExport ? '#0f172a' : '#64748b';
+      ctx.lineWidth = isExport ? 6 : 2;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(gx(0), gy(data.maxHeight));
+      ctx.lineTo(gx(data.width), gy(data.minHeight));
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = isExport ? 8 : 3;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.setLineDash(isExport ? [15, 10] : [6, 4]);
+      ctx.moveTo(gx(data.width), gy(0) + (isExport ? 120 : 12));
+      ctx.lineTo(gx(data.width), gy(maxRangeY));
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = isExport ? 4 : 2;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.font = F.heightLbl;
+      ctx.fillStyle = isExport ? '#0f172a' : '#ffffff';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(
+        `สูงสุด: ${data.maxHeight.toFixed(2)} ม.`,
+        gx(0) - (isExport ? 50 : 12),
+        gy(data.maxHeight)
+      );
+
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(
+        `ต่ำสุด: ${data.minHeight.toFixed(2)} ม.`,
+        gx(data.width) + (isExport ? 50 : 15),
+        gy(data.minHeight)
+      );
+
+      ctx.fillStyle = '#ef4444';
+      ctx.font = F.redLbl;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText(
+        `[ เส้นสิ้นสุดพื้นที่วัดจริง: ${data.width.toFixed(2)} ม. ]`,
+        gx(data.width),
+        gy(maxRangeY) - (isExport ? 30 : 5)
+      );
+}
+  </script>
+</body>
+</html>
